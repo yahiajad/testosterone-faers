@@ -1,0 +1,5 @@
+duckdb==1.5.6
+pandas==3.0.6
+scipy==1.18.1
+numpy==2.5.3
+matplotlib==3.11.2
