@@ -52,4 +52,40 @@ for ev, pts in a.EVENTS.items():
         (n0, e0, _, _), (n1, e1, _, _) = res["18-39"], res[lab]
         orr, p = fisher_exact([[e1, n1 - e1], [e0, n0 - e0]])
         out.append(f"   {ev} share {lab} vs 18-39: OR {orr:.2f}, Fisher p={p:.3f}")
+
+# reviewer-requested checks: unknown-age stratum, Mantel-Haenszel age-adjusted ROR, background without any-role testosterone,
+# polycythaemia diagnostic vs laboratory-only PTs, narrow polycythaemia definition
+a.flag("t_any", a.TESTO, ["PS", "SS", "C", "I"], a.TESTO_EXCL)
+def tab(where, pts, extra=""):
+    ptl = ",".join(f"'{p}'" for p in pts)
+    A, B, C, N = c.execute(f"""with pop as (select primaryid from base where {where} {extra}),
+      e as (select primaryid from pop where primaryid in (select * from t_ps)),
+      o as (select primaryid from pop where primaryid in (select primaryid from reac where pt in ({ptl})))
+      select (select count(*) from e where primaryid in (select * from o)), (select count(*) from e) - (select count(*) from e where primaryid in (select * from o)),
+             (select count(*) from o) - (select count(*) from e where primaryid in (select * from o)), (select count(*) from pop)""").fetchone()
+    return A, B, C, N - A - B - C
+def ror_ci(A, B, C, D):
+    r = A * D / (B * C); se = math.sqrt(1/A + 1/B + 1/C + 1/D); return f"{r:.2f} ({math.exp(math.log(r)-1.96*se):.2f}-{math.exp(math.log(r)+1.96*se):.2f}), n={A}"
+out.append("\n## Additional checks")
+strata = ["age_y < 18", "age_y between 18 and 39.99", "age_y between 40 and 64.99", "age_y between 65 and 119.99", "(age_y is null or age_y >= 120)"]
+for ev, pts in a.EVENTS.items():
+    na = tab("sex='M' and (age_y is null or age_y >= 120)", pts)
+    out.append(f"{ev} age not recorded: ROR {ror_ci(*na)}")
+    rows = [tab("sex='M' and " + st, pts) for st in strata]
+    T = [(A, B, C, D, A + B + C + D) for A, B, C, D in rows]
+    R = sum(A*D/n for A, B, C, D, n in T); S = sum(B*C/n for A, B, C, D, n in T)
+    PR = sum((A+D)/n * A*D/n for A, B, C, D, n in T); QS = sum((B+C)/n * B*C/n for A, B, C, D, n in T)
+    PSQR = sum((A+D)/n * B*C/n + (B+C)/n * A*D/n for A, B, C, D, n in T)
+    mh = R / S; v = PR/(2*R**2) + PSQR/(2*R*S) + QS/(2*S**2)  # Robins-Breslow-Greenland
+    out.append(f"{ev} Mantel-Haenszel ROR adjusted for age group (incl. not recorded): {mh:.2f} ({math.exp(math.log(mh)-1.96*math.sqrt(v)):.2f}-{math.exp(math.log(mh)+1.96*math.sqrt(v)):.2f})")
+    bg = tab("sex='M'", pts, "and (primaryid in (select * from t_ps) or primaryid not in (select * from t_any))")
+    out.append(f"{ev} background excluding testosterone in any role: ROR {ror_ci(*bg)}")
+pc = ",".join(f"'{p}'" for p in a.EVENTS["polycythaemia"])
+dg, lab = c.execute(f"""with cs as (select primaryid from base where sex='M' and primaryid in (select * from t_ps) and primaryid in (select primaryid from reac where pt in ({pc})))
+    select count(*) filter (where primaryid in (select primaryid from reac where pt in ('polycythaemia','secondary polycythaemia'))),
+           count(*) filter (where primaryid not in (select primaryid from reac where pt in ('polycythaemia','secondary polycythaemia'))) from cs""").fetchone()
+out.append(f"polycythaemia cases with a diagnostic PT: {dg}; laboratory PTs only: {lab}")
+nar = tab("sex='M'", ["polycythaemia", "secondary polycythaemia"])
+out.append(f"polycythaemia narrow definition (polycythaemia, secondary polycythaemia): ROR {ror_ci(*nar)}")
+out.append("sex field, deduplicated reports: " + ", ".join(f"{k}={n}" for k, n in c.execute("select coalesce(sex,'missing'), count(*) from base group by 1 order by 2 desc").fetchall()))
 txt = "\n".join(out); open(f"{B}/results/descriptives.txt", "w").write(txt); print(txt)
