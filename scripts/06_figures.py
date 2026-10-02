@@ -39,7 +39,7 @@ d = pd.read_csv(f"{B}/results/disproportionality.csv")
 order = ["main: men, PS", "men 18-39, PS", "men 40-64, PS", "men 65-119, PS", "sens: PS+SS", "sens: no lawyer reports",
          "sens: excl 2014-16", "sens: no duplicate collapse", "active comparator vs PDE5i"]
 labels = ["All men (primary analysis)", "  Age 18–39", "  Age 40–64", "  Age ≥65", "Primary or secondary suspect",
-          "Lawyer-submitted reports excluded", "First received 2014–2016 excluded", "No exact-duplicate collapse", "Active comparator: PDE5 inhibitors (ED)"]
+          "Lawyer-submitted reports excluded", "First received 2014–2016 excluded", "No exact-duplicate collapse", "Active comparator: PDE5 inhibitors"]
 fig, axes = plt.subplots(1, 2, figsize=(8.6, 4.2), sharey=True)
 for ax, ev, col, title in [(axes[0], "sleep_apnoea", SA, "Sleep apnoea"), (axes[1], "polycythaemia", PC, "Polycythaemia")]:
     sub = d[d.event == ev].set_index("analysis").loc[order]
