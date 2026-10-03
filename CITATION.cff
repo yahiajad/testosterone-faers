@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite it as below."
+title: "Code for: Testosterone and Reports of Sleep Apnoea and Polycythaemia in Men: An Age-Stratified Disproportionality Analysis of the FDA Adverse Event Reporting System, 2012–2026"
+authors:
+  - family-names: Jadallah
+    given-names: Yahia
+    orcid: "https://orcid.org/0009-0001-7196-219X"
+    affiliation: "Independent researcher, Perth, Western Australia"
+license: MIT
+repository-code: "https://github.com/yahiajad/testosterone-faers"
+keywords:
+  - pharmacovigilance
+  - FAERS
+  - disproportionality analysis
+  - testosterone
+  - sleep apnoea
+  - polycythaemia
